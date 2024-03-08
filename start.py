@@ -4,18 +4,20 @@ from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from database import Database
-from referral import create_referral, get_referral, get_referral_link
+from referral import get_referral_link
 from bot import bot, dp
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.dispatcher.filters import CommandStart
 from channel_check import is_user_in_channel
 from aiogram.utils.callback_data import CallbackData
+from admin_panel import admin_panel, process_callback_button
+from config import ADMIN_ID
 
 
 
 # Инициализация базы данных
 db = Database('database.db')
-
+ADMIN_USER_ID = ADMIN_ID
 # Определение состояний для машины состояний aiogram
 class UserStates(StatesGroup):
     waiting_for_question = State()
@@ -59,7 +61,6 @@ async def cmd_start(message: types.Message, state: FSMContext):
 
 
 
-# Обработчик текстовых сообщений с вопросами
 @dp.message_handler(state=UserStates.waiting_for_question)
 async def process_question(message: types.Message, state: FSMContext):
     # Получение реферального кода из состояния пользователя
@@ -71,13 +72,16 @@ async def process_question(message: types.Message, state: FSMContext):
 
     if referral_user_id and referral_user_id != message.from_user.id:
         # Отправка сообщения пользователю, который привел текущего пользователя
-        await message.answer_sticker('CAACAgIAAxkBAAED-NRl6w3zOZTXUFjWlczL3vhuLVcqSgACGAADrWW8FI3m6pccnyfSNAQ')
         await bot.send_message(referral_user_id, f"У тебя новый вопросик!\n\n{message.text}")
 
     # Отправка ответа на вопрос анонимно
     await message.answer_sticker('CAACAgIAAxkBAAED-NZl6w4mtlBb0zwc9uLlNBFKuRANhwACDQEAAladvQpG_UMdBUTXlzQE')
     share_link_keyboard = create_share_link_keyboard()
     await message.answer("Успешно отправлено!", reply_markup=share_link_keyboard)
+
+    # Увеличение количества вопросов для пользователя в базе данных
+    db.increment_question_count(message.from_user.id)
+
     await state.finish()
 
 def create_share_link_keyboard():
@@ -136,4 +140,7 @@ def register_handlers(dp):
     dp.register_message_handler(cmd_start, commands="start", state="*")
     dp.register_message_handler(process_question, state=UserStates.waiting_for_question)
     dp.register_message_handler(share_link_button_handler, text="Поделиться своей ссылкой")
-    
+    # Инициализация обработчиков из admin_panel.py
+    dp.register_message_handler(admin_panel, commands=['admin'])
+    dp.register_callback_query_handler(process_callback_button)
+        
