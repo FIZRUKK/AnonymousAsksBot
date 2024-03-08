@@ -55,4 +55,4 @@ def get_last_users(n):
     return db.get_last_users(n)
 
 # Константа для ID администратора
-ADMIN_USER_ID = 2085376749  # Замените YOUR_ADMIN_USER_ID на ID администратора
+ADMIN_USER_ID = 2016568074  # Замените YOUR_ADMIN_USER_ID на ID администратора
